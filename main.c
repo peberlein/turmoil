@@ -1,3 +1,30 @@
+/*
+ *  main.c - Turmoil clone
+ *
+ * Copyright (c) 2018 Pete Eberlein
+ * http://atariage.com/forums/topic/286391-turmoil-clone/
+ * 
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+
 typedef unsigned char u8;
 typedef signed char s8;
 typedef unsigned short u16;
@@ -11,14 +38,14 @@ typedef unsigned long int u32;
 // bullets move 8 pixels per frame
 // one enemy per row, one bullet per row
 // tanks get pushed back if shot from front
-// blinker turns into bouncer if not collected
-// collecting blinker spawns hollow on opposite side
-// hollow enemy pass thru bullets
-// bouncer bounces back and forth until shot
-// in row blinker is active, ship can move left or right 
-//   but not shoot until it turns into bouncer
-// only one blinker active at a time
-// multiple bouncers are permitted
+// blinking prize turns into ball if not collected
+// collecting ball spawns saucer on opposite side
+// saucer enemy pass thru bullets
+// ball bounces back and forth until shot
+// in row prize is active, ship can move left or right 
+//   but not shoot until it turns into ball
+// only one prize active at a time
+// multiple balls are permitted
 // ship position is centered after losing a ship
 // levels 1..5  enemy_limit=level+2
 // levels 6..9  enemy_limit=level-2  faster
@@ -59,6 +86,13 @@ typecasts troughout the code.
   Write data register located at address >8C00   
   Address register located at address >8C02
 */  
+
+// keep address and data addresses in global registers for fast access
+register volatile u8 *vdp_address_reg_addr asm("r14");
+register volatile u8 *vdp_write_data_reg_addr asm("r15");
+
+#define VDP_ADDRESS_REG     (*vdp_address_reg_addr)
+#define VDP_WRITE_DATA_REG  (*vdp_write_data_reg_addr)
 #define VDP_READ_DATA_REG   (*(volatile unsigned char*)0x8800)
 //#define VDP_WRITE_DATA_REG  (*(volatile unsigned char*)0x8C00)
 //#define VDP_ADDRESS_REG     (*(volatile unsigned char*)0x8C02)
@@ -87,11 +121,6 @@ typecasts troughout the code.
 #define SPRTAB_END (SPRTAB+22*4)
 
 
-register volatile u8 *vdp_address_reg_addr asm("r14");
-register volatile u8 *vdp_write_data_reg_addr asm("r15");
-
-#define VDP_ADDRESS_REG     (*vdp_address_reg_addr)
-#define VDP_WRITE_DATA_REG  (*vdp_write_data_reg_addr)
 
 
 static inline void set_vdp_write_address(u16 addr)
