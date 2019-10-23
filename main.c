@@ -75,6 +75,43 @@ typedef unsigned long int u32;
 // f0..ff lower arrow left and right
 
 
+
+/* Location of the screen in VDP memory.
+   This is the based on the VDP configuration set by the TI firmware  */
+#define VDP_SCREEN_ADDRESS  0
+
+/* Location of things in VDP memory. Set up for bitmap mode */
+#define CLRTAB 0x0000  // Char color table
+#define CLRTAB2 0x0800 // Char color table
+#define CLRTAB3 0x1000 // Char color table
+#define SCRTAB 0x1800  // Screen Table
+#define SPRTAB 0x1F80  // Sprite list table
+#define PATTAB 0x2000  // Char pattern table
+#define PATTAB2 0x2800 // Char pattern table
+#define PATTAB3 0x3000 // Char pattern table
+#define SPRPAT 0x3800  // Sprite patterns
+
+#define SPRTAB_BULLETS (SPRTAB)
+#define SPRTAB_SHIP (SPRTAB+14*4)
+#define SPRTAB_ENEMIES (SPRTAB+15*4)
+#define SPRTAB_END (SPRTAB+22*4)
+
+static const u8 vdpini[] = {
+	0x02,		// VDP Register 0: 02 (Bitmap Mode)
+	0xE2,		// VDP Register 1: 16x16 Sprites
+	SCRTAB/0x400,	// VDP Register 2: Screen Image Table
+	CLRTAB/0x40+0x7F, // VDP Register 3: Color Table
+	PATTAB/0x800+3,	// VDP Register 4: Pattern Table
+	SPRTAB/0x80,	// VDP Register 5: Sprite List Table
+	SPRPAT/0x800,	// VDP Register 6: Sprite Pattern Table
+	0xF1,		// VDP Register 7: White on Black
+};
+
+	
+	
+#ifdef tms9900
+// TI-99/4A
+
 /*
 Define macros to access VDP registers
 
@@ -99,29 +136,6 @@ register volatile u8 *vdp_write_data_reg_addr asm("r15");
 #define VDP_STATUS_REG      (*(volatile unsigned char*)0x8802)
 
 #define SND_REG      (*(volatile unsigned char*)0x8400)
-
-/* Location of the screen in VDP memory.
-   This is the based on the VDP configuration set by the TI firmware  */
-#define VDP_SCREEN_ADDRESS  0
-
-/* Location of things in VDP memory. Set up for bitmap mode */
-#define CLRTAB 0x0000  // Char color table
-#define CLRTAB2 0x0800 // Char color table
-#define CLRTAB3 0x1000 // Char color table
-#define SCRTAB 0x1800  // Screen Table
-#define SPRTAB 0x1F80  // Sprite list table
-#define PATTAB 0x2000  // Char pattern table
-#define PATTAB2 0x2800 // Char pattern table
-#define PATTAB3 0x3000 // Char pattern table
-#define SPRPAT 0x3800  // Sprite patterns
-
-#define SPRTAB_BULLETS (SPRTAB)
-#define SPRTAB_SHIP (SPRTAB+14*4)
-#define SPRTAB_ENEMIES (SPRTAB+15*4)
-#define SPRTAB_END (SPRTAB+22*4)
-
-
-
 
 static inline void set_vdp_write_address(u16 addr)
 {
@@ -230,49 +244,6 @@ static void vdp_read(u16 addr, u8 *dest, u16 count)
 
 
 
-
-
-
-static void vsync(void)
-{
-	VDP_STATUS_REG; // clear interrupt so we catch the edge
-	asm volatile (
-		"	li r12,4\n"
-	    "	tb 0\n"
-	    "	jeq -4\n"
-			::
-			:"r12");
-	VDP_STATUS_REG; // clear interrupt flag manually since we polled CRU
-}
-
-
-
-// linker seems to want this even though unused
-void memcpy(void *dst, void *src, unsigned int count)
-{
-	char *a = dst, *b = src;
-	while (count--)
-		*a++ = *b++;
-}
-void memset(void *dst, char byte, unsigned int count)
-{
-	char *a = dst;
-	while (count--)
-		*a++ = byte;
-}
-
-
-static const u8 vdpini[] = {
-	0x02,		// VDP Register 0: 02 (Bitmap Mode)
-	0xE2,		// VDP Register 1: 16x16 Sprites
-	SCRTAB/0x400,	// VDP Register 2: Screen Image Table
-	CLRTAB/0x40+0x7F, // VDP Register 3: Color Table
-	PATTAB/0x800+3,	// VDP Register 4: Pattern Table
-	SPRTAB/0x80,	// VDP Register 5: Sprite List Table
-	SPRPAT/0x800,	// VDP Register 6: Sprite Pattern Table
-	0xF1,		// VDP Register 7: White on Black
-};
-
 static void init_vdp(void)
 {
 	const u8 *src = vdpini;
@@ -289,32 +260,18 @@ static void init_vdp(void)
 	}
 }
 
-static const u8 wall[] = { 0x00, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0x00, 0x00};
-static const u8 wall_pal[] = {
-	0xbb,0xab,0xaa,0xa9,0x99,0x98,0x88,0x9d,0xdd,0xd5,0x55,0x54,
-	0x44,0x4c,0x52,0x72,0x73,0x33,0x32,0x3e,0xee,0xeb,
-};
+static void vsync(void)
+{
+	VDP_STATUS_REG; // clear interrupt so we catch the edge
+	asm volatile (
+		"	li r12,4\n"
+	    "	tb 0\n"
+	    "	jeq -4\n"
+			::
+			:"r12");
+	VDP_STATUS_REG; // clear interrupt flag manually since we polled CRU
+}
 
-
-static const u8 ship_pal[] = {
-	0x01,0x61,0x61,0x61,0x51,0x41,0xf1,0x61,
-	0xf1,0x41,0x51,0x61,0x61,0x61,0x01,0x01,
-};
-
-static const u8 explode_pal[] = {
-	0x11,0xb1,0xa1,0x91,0x61,0xa1,0xa1,0xf1,
-	0xb1,0x91,0xa1,0x61,0xa1,0xb1,0x01,0x01,
-};
-
-static const u8 enemy_pal[] = {
-	0x01,0xa1,0x91,0x61,0xd1,0xc1,0xa1,0x61,
-	0xa1,0xc1,0x51,0xd1,0x61,0x91,0xa1,0x01,
-};
-
-static const u8 arrow_pal[] = {
-	0xf1,0xf1,0x51,0x51,0x51,0x51,0xf1,0xf1,
-	0x51,0x51,0x51,0x51,0x51,0xf1,0xf1,0xf1,
-};
 
 
 static u16 random(void)
@@ -348,11 +305,85 @@ static u16 read_joystick(void)
 			:"r12");
 	return result;
 }
+
 #define JOYSTICK_FIRE 0x0100
 #define JOYSTICK_UP 0x1000
 #define JOYSTICK_DOWN 0x0800
 #define JOYSTICK_LEFT 0x0200
 #define JOYSTICK_RIGHT 0x0400
+
+
+
+
+// linker seems to want this even though unused
+void memcpy(void *dst, void *src, unsigned int count)
+{
+	char *a = dst, *b = src;
+	while (count--)
+		*a++ = *b++;
+}
+void memset(void *dst, char byte, unsigned int count)
+{
+	char *a = dst;
+	while (count--)
+		*a++ = byte;
+}
+
+#else
+#error Compiler target not supported
+
+
+
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static const u8 wall[] = { 0x00, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0x00, 0x00};
+static const u8 wall_pal[] = {
+	0xbb,0xab,0xaa,0xa9,0x99,0x98,0x88,0x9d,0xdd,0xd5,0x55,0x54,
+	0x44,0x4c,0x52,0x72,0x73,0x33,0x32,0x3e,0xee,0xeb,
+};
+
+
+static const u8 ship_pal[] = {
+	0x01,0x61,0x61,0x61,0x51,0x41,0xf1,0x61,
+	0xf1,0x41,0x51,0x61,0x61,0x61,0x01,0x01,
+};
+
+static const u8 explode_pal[] = {
+	0x11,0xb1,0xa1,0x91,0x61,0xa1,0xa1,0xf1,
+	0xb1,0x91,0xa1,0x61,0xa1,0xb1,0x01,0x01,
+};
+
+static const u8 enemy_pal[] = {
+	0x01,0xa1,0x91,0x61,0xd1,0xc1,0xa1,0x61,
+	0xa1,0xc1,0x51,0xd1,0x61,0x91,0xa1,0x01,
+};
+
+static const u8 arrow_pal[] = {
+	0xf1,0xf1,0x51,0x51,0x51,0x51,0xf1,0xf1,
+	0x51,0x51,0x51,0x51,0x51,0xf1,0xf1,0xf1,
+};
+
+
 
 static const u8 sh[] = {34, 36, 38, 35, 37, 39};
 
@@ -612,11 +643,11 @@ static void rainbow(void)
 
 static void draw_score(void)
 {
-	u16 places[] = {1000,100,10,1};
+	u16 places[] = {10000,1000,100,10,1};
 	u8 digit;
 	u16 i,j = score;
 	set_vdp_write_address(SCRTAB + 18);
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < 5; i++) {
 		digit = '0';
 		while (j >= places[i]) {
 			j -= places[i];
@@ -1074,7 +1105,7 @@ void main()
 					erase_ship(i, old_x >> 8);
 					if (t == PRIZE) {
 						countdown = 0;
-						score += 80;
+						score += 80; // shows 800
 						draw_score();
 						t = SAUCER;
 						old_x = 0xf000 - old_x;
