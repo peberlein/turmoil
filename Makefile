@@ -83,9 +83,6 @@ turmoil.ea5: $(PREREQUISITES) linkfile.ea5
 turmoil.lst: turmoil.elf
 	$(OBJDUMP) -t -dS $^ > turmoil.lst
 
-turmoil.rpk: turmoilc.bin layout.xml
-	zip -q $@ $^
-
 # Recipe to clean all compiled objects
 .phony clean:
 	rm -f *.o
